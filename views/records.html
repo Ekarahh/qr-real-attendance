@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Records - QR Attendance</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="page">
+      <h1>QR Attendance</h1>
+      <nav>
+        <a href="/">Sessions</a>
+        <a href="/records">Records</a>
+        <a href="/scan">Scan</a>
+        <a href="/logout">Log out</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="page">
+    <div class="card">
+      <h2>Attendance records</h2>
+
+      <div class="row">
+        <div>
+          <label for="sessionFilter">Show</label>
+          <select id="sessionFilter">
+            <option value="">All sessions</option>
+          </select>
+        </div>
+        <div style="flex: 0;">
+          <a class="button grey" id="csvLink" href="/export.csv" style="margin-bottom: 14px;">Download CSV</a>
+        </div>
+      </div>
+
+      <p class="muted" id="summary"></p>
+      <div id="recordList"><p class="muted">Loading...</p></div>
+    </div>
+  </div>
+
+  <script>
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Fill the dropdown with every session so the teacher can filter.
+    function loadFilter() {
+      fetch('/api/sessions')
+        .then(function (res) { return res.json(); })
+        .then(function (sessions) {
+          const select = document.getElementById('sessionFilter');
+          sessions.forEach(function (s) {
+            const option = document.createElement('option');
+            option.value = s.id;
+            option.textContent = s.title + ' (' + s.code + ')';
+            select.appendChild(option);
+          });
+        });
+    }
+
+    function loadRecords() {
+      const sessionId = document.getElementById('sessionFilter').value;
+      const query = sessionId ? '?session=' + sessionId : '';
+
+      // The CSV button downloads exactly what is on screen.
+      document.getElementById('csvLink').href = '/export.csv' + query;
+
+      fetch('/api/records' + query)
+        .then(function (res) { return res.json(); })
+        .then(function (rows) {
+          const box = document.getElementById('recordList');
+          document.getElementById('summary').textContent = rows.length + ' record(s)';
+
+          if (rows.length === 0) {
+            box.innerHTML = '<p class="muted">No attendance has been recorded yet.</p>';
+            return;
+          }
+
+          let html = '<table><tr><th>Session</th><th>Name</th><th>Student ID</th><th>Date and time</th></tr>';
+          rows.forEach(function (row) {
+            html += '<tr>' +
+              '<td>' + escapeHtml(row.session_title) + '</td>' +
+              '<td>' + escapeHtml(row.student_name) + '</td>' +
+              '<td>' + escapeHtml(row.student_id) + '</td>' +
+              '<td>' + new Date(row.checked_in_at).toLocaleString() + '</td>' +
+              '</tr>';
+          });
+          box.innerHTML = html + '</table>';
+        });
+    }
+
+    document.getElementById('sessionFilter').addEventListener('change', loadRecords);
+
+    loadFilter();
+    loadRecords();
+  </script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login - QR Attendance</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="page narrow" style="padding-top: 60px;">
+    <div class="card">
+      <h2>QR Attendance</h2>
+      <p class="muted">Teacher login</p>
+
+      <div id="error" class="message error" style="display: none;">
+        Wrong password, please try again.
+      </div>
+
+      <form method="POST" action="/login">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autofocus>
+        <button type="submit" class="full">Log in</button>
+      </form>
+    </div>
+    <p class="muted center">Students do not log in. They just scan the QR code.</p>
+  </div>
+
+  <script>
+    // If the server sent us back with ?error=1 then the password was wrong.
+    if (window.location.search.indexOf('error=1') !== -1) {
+      document.getElementById('error').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
