@@ -1,14 +1,16 @@
 {
   "name": "qr-attendance",
   "version": "1.0.0",
-  "description": "A QR code based attendance system built with Node, Express and SQLite",
+  "description": "A QR code based attendance system built with React, Node, Express and SQLite",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "build": "npm install --prefix client && npm run build --prefix client",
+    "dev": "node --watch server.js",
+    "dev:client": "npm run dev --prefix client"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19"
   },
   "dependencies": {
     "better-sqlite3": "^11.5.0",

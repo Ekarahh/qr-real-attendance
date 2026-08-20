@@ -1,7 +1,10 @@
 // server.js
 // QR attendance system - Express + SQLite.
 //
-// How it works:
+// This file is the back end only. It answers the /api/... calls and hands out the
+// finished React app that Vite builds into client/dist.
+//
+// How the app works:
 //   1. The teacher logs in and creates a session (e.g. "CSC 201 - Friday").
 //   2. The app makes a QR code that points at /s/<code>.
 //   3. A student scans it with their phone camera, types their name + ID, and is marked present.
@@ -12,26 +15,26 @@ const cookieSession = require('cookie-session');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
 const path = require('path');
+const fs = require('fs');
 const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
+// Where Vite puts the built React app.
+const clientBuild = path.join(__dirname, 'client', 'dist');
+
 // Hosts like Render sit in front of the app, so this lets Express see that the
 // real address is https. Without it the QR codes would point at http and break.
 app.set('trust proxy', true);
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
 app.use(cookieSession({
   name: 'attendance',
   keys: [process.env.SESSION_SECRET || 'please-change-me'],
   maxAge: 8 * 60 * 60 * 1000 // 8 hours
 }));
-
-// Anything in /public can be opened by anyone (the CSS and the student check-in page).
-app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -52,55 +55,34 @@ function now() {
   return new Date().toISOString();
 }
 
-// The teacher pages go through this, the student pages do not.
+// The teacher routes go through this, the student routes do not.
 function requireLogin(req, res, next) {
   if (req.session && req.session.loggedIn) {
     return next();
   }
-  if (req.path.startsWith('/api/')) {
-    return res.status(401).json({ error: 'Please log in first' });
-  }
-  return res.redirect('/login');
-}
-
-function sendPage(res, file) {
-  res.sendFile(path.join(__dirname, 'views', file));
+  return res.status(401).json({ error: 'Please log in first' });
 }
 
 // ---------------------------------------------------------------------------
-// login / logout
+// API - login and logout
 // ---------------------------------------------------------------------------
 
-app.get('/login', (req, res) => sendPage(res, 'login.html'));
+// React asks this when it starts up, to find out if the cookie is still good.
+app.get('/api/me', (req, res) => {
+  res.json({ loggedIn: Boolean(req.session && req.session.loggedIn) });
+});
 
-app.post('/login', (req, res) => {
+app.post('/api/login', (req, res) => {
   if (req.body.password === ADMIN_PASSWORD) {
     req.session.loggedIn = true;
-    return res.redirect('/');
+    return res.json({ ok: true });
   }
-  res.redirect('/login?error=1');
+  res.status(401).json({ error: 'Wrong password, please try again.' });
 });
 
-app.get('/logout', (req, res) => {
+app.post('/api/logout', (req, res) => {
   req.session = null;
-  res.redirect('/login');
-});
-
-// ---------------------------------------------------------------------------
-// teacher pages
-// ---------------------------------------------------------------------------
-
-app.get('/', requireLogin, (req, res) => sendPage(res, 'dashboard.html'));
-app.get('/session/:id', requireLogin, (req, res) => sendPage(res, 'session.html'));
-app.get('/records', requireLogin, (req, res) => sendPage(res, 'records.html'));
-app.get('/scan', requireLogin, (req, res) => sendPage(res, 'scan.html'));
-
-// ---------------------------------------------------------------------------
-// student page - this is what the QR code opens
-// ---------------------------------------------------------------------------
-
-app.get('/s/:code', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'checkin.html'));
+  res.json({ ok: true });
 });
 
 // ---------------------------------------------------------------------------
@@ -221,6 +203,7 @@ app.get('/api/records', requireLogin, (req, res) => {
 });
 
 // Download the records as a CSV file that opens in Excel or Google Sheets.
+// This is a normal link, not a fetch call, so the browser saves the file.
 app.get('/export.csv', requireLogin, (req, res) => {
   const sessionId = req.query.session;
   const sql =
@@ -253,6 +236,30 @@ app.get('/export.csv', requireLogin, (req, res) => {
   res.send(lines.join('\n'));
 });
 
+// ---------------------------------------------------------------------------
+// the React app
+// ---------------------------------------------------------------------------
+
+// Serve the built files (the JavaScript bundle, the CSS, and so on).
+app.use(express.static(clientBuild));
+
+// React Router handles the addresses like /records and /s/K7P2QX9M in the
+// browser, so every other address has to give back the same index.html and let
+// React decide what to show. This runs after the API routes above, so it never
+// swallows them.
+app.get('*', (req, res) => {
+  const indexFile = path.join(clientBuild, 'index.html');
+
+  if (!fs.existsSync(indexFile)) {
+    return res.status(503).send(
+      'The React app has not been built yet. Run "npm run build" first, ' +
+      'or run "npm run dev" inside the client folder while developing.'
+    );
+  }
+
+  res.sendFile(indexFile);
+});
+
 app.listen(PORT, () => {
-  console.log('Attendance app running on http://localhost:' + PORT);
+  console.log('Attendance API running on http://localhost:' + PORT);
 });

@@ -28,20 +28,25 @@ easy to sign for a friend.
 
 | Part | What I used |
 | --- | --- |
-| Front end | Plain HTML, CSS and JavaScript (no framework, no build step) |
+| Front end | React (built with Vite), plain CSS |
+| Routing | React Router |
 | Back end | Node.js with Express |
 | Database | SQLite (through `better-sqlite3`) |
 | QR codes | `qrcode` to make them, `html5-qrcode` to read them with a camera |
 | Login | `cookie-session` with one shared teacher password |
 
+The React app talks to the Express API with `fetch`. There is no Redux or any other state
+library, just `useState` and `useEffect`.
+
 ## Running it on your computer
 
-You need Node.js 18 or newer.
+You need Node.js 20.19 or newer.
 
 ```bash
 git clone <your-repo-url>
 cd qr-attendance
-npm install
+npm install          # the Express server
+npm run build        # installs the React app and builds it
 npm start
 ```
 
@@ -49,6 +54,24 @@ Then open http://localhost:3000 and log in with `admin123`.
 
 The database file `attendance.db` is created automatically the first time you run it. Delete
 that file if you ever want to start over with empty data.
+
+### While you are changing the React code
+
+`npm run build` makes you rebuild after every edit, which is slow. For development, run the
+two halves separately in **two terminals**:
+
+```bash
+# terminal 1 - the API
+npm run dev
+
+# terminal 2 - the React app with instant reloading
+npm run dev:client
+```
+
+Now use **http://localhost:5173** (Vite), not port 3000. Vite forwards every `/api/...` call
+over to Express for you, which is set up in [client/vite.config.js](client/vite.config.js).
+
+When you are done, run `npm run build` again so the version on port 3000 is up to date.
 
 ### Testing the scan without a second phone
 
@@ -76,18 +99,32 @@ Once the app is deployed this is not a problem, because the QR code holds a real
 ## Files in this project
 
 ```
-server.js            all the routes live here
-db.js                creates the database and the two tables
-views/               pages only the teacher can see
-  login.html
-  dashboard.html     create a session, list all sessions
-  session.html       the QR code and the live list
-  records.html       all records, filter, CSV button
-  scan.html          camera scanner for laptops
-public/              anything the public can open
-  checkin.html       the page the QR code opens
-  style.css
+server.js              the API, and it also serves the built React app
+db.js                  creates the database and the two tables
+render.yaml            settings so Render knows how to build and start it
+
+client/                the React app
+  index.html
+  vite.config.js       includes the proxy used during development
+  src/
+    main.jsx           starts React and turns on React Router
+    App.jsx            the list of pages, and the login check
+    api.js             small fetch helpers shared by the pages
+    styles.css         all the styling
+    components/
+      Header.jsx       the menu bar on the teacher pages
+    pages/
+      Login.jsx
+      Dashboard.jsx    create a session, list all sessions
+      SessionPage.jsx  the QR code and the live list
+      Records.jsx      all records, filter, CSV button
+      Scan.jsx         camera scanner for laptops
+      CheckIn.jsx      the page the QR code opens on a student's phone
 ```
+
+Only `/login` and `/s/<code>` can be opened without logging in. Everything else checks with the
+server first, and the API returns 401 for anyone who is not logged in, so hiding a page in
+React is not the only thing protecting it.
 
 ## The database
 
@@ -114,17 +151,13 @@ public/              anything the public can open
 `session_id` and `student_id` together are marked UNIQUE, and that is what stops one student
 being recorded twice in the same session.
 
-## The routes
+## The API
 
 | Method | Route | Who | What it does |
 | --- | --- | --- | --- |
-| GET | `/login` | anyone | login page |
-| POST | `/login` | anyone | checks the password |
-| GET | `/` | teacher | dashboard |
-| GET | `/session/:id` | teacher | QR code and live list |
-| GET | `/records` | teacher | all attendance records |
-| GET | `/scan` | teacher | camera scanner |
-| GET | `/s/:code` | anyone | the student check in page |
+| GET | `/api/me` | anyone | says whether you are logged in |
+| POST | `/api/login` | anyone | checks the password |
+| POST | `/api/logout` | anyone | clears the cookie |
 | POST | `/api/sessions` | teacher | create a session |
 | GET | `/api/sessions` | teacher | list sessions |
 | GET | `/api/sessions/:id` | teacher | one session plus its QR image |
@@ -134,12 +167,15 @@ being recorded twice in the same session.
 | GET | `/api/records` | teacher | records, optionally `?session=<id>` |
 | GET | `/export.csv` | teacher | download CSV, optionally `?session=<id>` |
 
+Any other address gives back the React app, because React Router deals with pages like
+`/records` and `/s/K7P2QX9M` inside the browser.
+
 ## Deploying it (Render, free)
 
 1. Push this folder to a GitHub repository.
 2. Make an account at https://render.com and click **New > Web Service**.
 3. Pick your repository. Render reads `render.yaml`, but if it asks, the settings are:
-   - Build command: `npm install`
+   - Build command: `npm install && npm run build`
    - Start command: `npm start`
 4. Add these environment variables under **Environment**:
 
@@ -149,6 +185,9 @@ being recorded twice in the same session.
    | `SESSION_SECRET` | any long random string |
 
 5. Deploy. Render gives you a link like `https://qr-attendance.onrender.com`.
+
+The build step is what turns the React code into plain files in `client/dist`, which Express
+then serves. If you forget it, the site shows a message telling you to run the build.
 
 The camera scanner at `/scan` only works over https, which Render gives you for free. Phone
 cameras scanning the QR code work either way, because they just open a link.

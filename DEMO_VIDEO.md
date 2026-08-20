@@ -21,7 +21,8 @@ you get a clean take without editing.
 
 > "This is a QR attendance system. Instead of passing a paper sheet around a lecture hall, the
 > lecturer puts a QR code on the screen, students scan it, and attendance is recorded
-> automatically. It is built with Node, Express and SQLite."
+> automatically. The front end is React built with Vite, and the back end is Node and Express
+> with a SQLite database."
 
 Show the login page while you say this.
 
@@ -72,9 +73,9 @@ Press **Download CSV** and open the file.
 
 Show the `/scan` page briefly, and the code in your editor for two or three seconds.
 
-> "There is also a scanner page for laptops without a camera app. The whole thing is one
-> Express server, a SQLite database with two tables, and plain HTML and JavaScript on the front
-> end. Thanks for watching."
+> "There is also a scanner page for laptops without a camera app. The whole thing is a React
+> front end talking to an Express API, with a SQLite database of two tables behind it. Thanks
+> for watching."
 
 ## Small things that make it look sharper
 
