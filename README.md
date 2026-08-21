@@ -1,210 +1,132 @@
 # QR Attendance
 
-A small web app for taking attendance with QR codes. The teacher creates a session, the app
-puts a QR code on the screen, students scan it with their phones and type their name and ID,
-and the teacher can see the list and download it as a spreadsheet.
+An attendance app where the lecturer puts a QR code on the screen and students scan it with
+their phones to sign in.
 
-I built this because signing a paper attendance sheet in a big class takes forever and it is
-easy to sign for a friend.
+I built this because attendance in a big class is painful. The sheet takes half the lecture to
+go round, and people just sign for their friends who are not even in the building. If the code
+is only on the screen for a few minutes, you have to actually be there.
 
-**Live demo:** _add your deployed link here after following the deploy steps below_
-**Demo video:** _add your video link here_
+- Live demo: _put your link here once you deploy it_
+- Demo video: _put your video link here_
+- Password for the demo: `admin123`
 
-**Login password for the demo:** `admin123`
+## What you can do with it
 
----
+- Create a session and it gives you a QR code straight away
+- Students scan with the normal phone camera, there is no app to download
+- They type their name and matric number, and that is it
+- Names show up on the lecturer's screen while people are still scanning
+- The same matric number cannot sign in twice for one session
+- Close attendance when the lecture starts so latecomers cannot scan
+- Download the whole thing as a CSV
 
-## What it does
+## What I used
 
-- **Create a session** - give it a name like "CSC 201 - Friday lecture" and the app makes a QR code for it.
-- **Scan to check in** - a student scans with their normal phone camera, fills in name and ID, done. There is also a `/scan` page with a camera scanner for laptops.
-- **No double sign in** - the same student ID cannot be recorded twice for the same session.
-- **Open and close attendance** - once the teacher closes a session, late scans are refused.
-- **Live list** - the session screen refreshes every 5 seconds so you can watch people come in.
-- **Records page** - see everything, or filter down to one session.
-- **Export to CSV** - opens straight in Excel or Google Sheets.
+- React with Vite for the front end, and React Router for moving between pages
+- Express for the API
+- SQLite for the database, through `better-sqlite3`
+- `qrcode` to make the QR codes, and `html5-qrcode` to read them with a camera
 
-## Built with
+No Redux and no TypeScript. It is all `useState`, `useEffect` and `fetch`, which was already
+enough new stuff for me to be learning at once.
 
-| Part | What I used |
-| --- | --- |
-| Front end | React (built with Vite), plain CSS |
-| Routing | React Router |
-| Back end | Node.js with Express |
-| Database | SQLite (through `better-sqlite3`) |
-| QR codes | `qrcode` to make them, `html5-qrcode` to read them with a camera |
-| Login | `cookie-session` with one shared teacher password |
+## Running it
 
-The React app talks to the Express API with `fetch`. There is no Redux or any other state
-library, just `useState` and `useEffect`.
-
-## Running it on your computer
-
-You need Node.js 20.19 or newer.
+You need Node 20.19 or newer.
 
 ```bash
-git clone <your-repo-url>
-cd qr-attendance
-npm install          # the Express server
-npm run build        # installs the React app and builds it
+npm install
+npm run build
 npm start
 ```
 
-Then open http://localhost:3000 and log in with `admin123`.
+Then go to http://localhost:3000 and log in with `admin123`.
 
-The database file `attendance.db` is created automatically the first time you run it. Delete
-that file if you ever want to start over with empty data.
+`npm run build` is the one that installs and builds the React side. If you skip it the site
+just tells you to run it, which happened to me enough times that I made it say so properly.
 
-### While you are changing the React code
+The database file `attendance.db` makes itself the first time you run the app. Delete it if you
+want to start from nothing again.
 
-`npm run build` makes you rebuild after every edit, which is slow. For development, run the
-two halves separately in **two terminals**:
+### If you are actually editing the React code
+
+Rebuilding after every change gets old fast. Open two terminals:
 
 ```bash
-# terminal 1 - the API
-npm run dev
-
-# terminal 2 - the React app with instant reloading
-npm run dev:client
+npm run dev          # the API
+npm run dev:client   # React, reloads as you type
 ```
 
-Now use **http://localhost:5173** (Vite), not port 3000. Vite forwards every `/api/...` call
-over to Express for you, which is set up in [client/vite.config.js](client/vite.config.js).
+Then use http://localhost:5173 instead of 3000. Vite passes the `/api` calls through to Express
+so both halves still talk to each other. Run `npm run build` when you are finished so port 3000
+is up to date again.
 
-When you are done, run `npm run build` again so the version on port 3000 is up to date.
+### The thing that confused me for ages
 
-### Testing the scan without a second phone
+Your phone cannot open `localhost`, that address means "this device". So scanning the QR off
+your own laptop screen will just fail and it looks like the app is broken.
 
-The QR code points at `http://localhost:3000/s/<code>`, and your phone cannot open `localhost`
-on your laptop. Two easy ways around it:
+Easiest fix while testing is to copy the link printed under the QR code and paste it into a new
+tab. That does exactly what scanning does. If you want to test with a real phone, find your
+laptop IP with `ipconfig` and start it like this:
 
-1. Copy the link shown under the QR code and paste it in a new browser tab. That is exactly
-   what scanning does.
-2. Find your laptop's local IP (`ipconfig` on Windows, `ifconfig` on Mac/Linux) and start the
-   app with that address so the QR points at it, for example:
-   `BASE_URL=http://192.168.1.5:3000 npm start`. Then your phone can scan it as long as both
-   devices are on the same wifi.
-
-Once the app is deployed this is not a problem, because the QR code holds a real public link.
-
-## How to use it
-
-1. Log in at `/login`.
-2. Type a session name and press **Create session and show QR**.
-3. Put the QR code on the projector, or let students scan it off your laptop screen.
-4. Watch names appear in the **Checked in** list.
-5. Press **Close attendance** when the class starts, so late scans are refused.
-6. Go to **Records**, pick the session, and press **Download CSV**.
-
-## Files in this project
-
-```
-server.js              the API, and it also serves the built React app
-db.js                  creates the database and the two tables
-render.yaml            settings so Render knows how to build and start it
-
-client/                the React app
-  index.html
-  vite.config.js       includes the proxy used during development
-  src/
-    main.jsx           starts React and turns on React Router
-    App.jsx            the list of pages, and the login check
-    api.js             small fetch helpers shared by the pages
-    styles.css         all the styling
-    components/
-      Header.jsx       the menu bar on the teacher pages
-    pages/
-      Login.jsx
-      Dashboard.jsx    create a session, list all sessions
-      SessionPage.jsx  the QR code and the live list
-      Records.jsx      all records, filter, CSV button
-      Scan.jsx         camera scanner for laptops
-      CheckIn.jsx      the page the QR code opens on a student's phone
+```bash
+BASE_URL=http://192.168.1.5:3000 npm start
 ```
 
-Only `/login` and `/s/<code>` can be opened without logging in. Everything else checks with the
-server first, and the API returns 401 for anyone who is not logged in, so hiding a page in
-React is not the only thing protecting it.
+Both devices have to be on the same wifi. Once it is deployed none of this matters, because
+then the QR holds a real address.
 
-## The database
+## How it fits together
 
-**sessions**
+```
+server.js     the API, and it also hands out the built React app
+db.js         makes the database and the two tables
+client/src    the React app
+  App.jsx       the list of pages and the login check
+  api.js        fetch helpers so the pages are not all repeating themselves
+  pages/        Login, Dashboard, SessionPage, Records, Scan, CheckIn
+  components/   just the menu bar so far
+```
 
-| column | meaning |
-| --- | --- |
-| id | number for the session |
-| title | what the teacher called it |
-| code | the 8 letter code inside the QR, e.g. `K7P2QX9M` |
-| is_open | 1 while check in is allowed, 0 once closed |
-| created_at | when it was made |
+There are two tables. `sessions` holds the title, the 8 letter code that goes in the QR, and
+whether it is still open. `attendance` holds one row per student per session.
 
-**attendance**
+The bit I am happiest with is that `session_id` and `student_id` are marked UNIQUE together in
+the database, so double sign in is blocked by SQLite itself. Even if somebody messes with the
+page in dev tools they still cannot get two rows in. The API catches that error and turns it
+into a normal "you already checked in" message.
 
-| column | meaning |
-| --- | --- |
-| id | number for the record |
-| session_id | which session this belongs to |
-| student_id | matric number the student typed |
-| student_name | name the student typed |
-| checked_in_at | the exact time they scanned |
+Only the login page and `/s/<code>` are open to everyone. Every other API route checks the
+cookie and returns 401 if you are not logged in, so hiding a page in React is not the only
+thing keeping it private.
 
-`session_id` and `student_id` together are marked UNIQUE, and that is what stops one student
-being recorded twice in the same session.
+## Putting it online (I used Render, free plan)
 
-## The API
+1. Push it to GitHub
+2. On Render, New > Web Service, and pick the repo
+3. Build command is `npm install && npm run build`, start command is `npm start`
+4. Under Environment, set `ADMIN_PASSWORD` to something that is not `admin123`, and
+   `SESSION_SECRET` to any long random string
 
-| Method | Route | Who | What it does |
-| --- | --- | --- | --- |
-| GET | `/api/me` | anyone | says whether you are logged in |
-| POST | `/api/login` | anyone | checks the password |
-| POST | `/api/logout` | anyone | clears the cookie |
-| POST | `/api/sessions` | teacher | create a session |
-| GET | `/api/sessions` | teacher | list sessions |
-| GET | `/api/sessions/:id` | teacher | one session plus its QR image |
-| POST | `/api/sessions/:id/toggle` | teacher | open or close attendance |
-| GET | `/api/public/sessions/:code` | anyone | session name, so the check in page can show it |
-| POST | `/api/checkin` | anyone | record attendance |
-| GET | `/api/records` | teacher | records, optionally `?session=<id>` |
-| GET | `/export.csv` | teacher | download CSV, optionally `?session=<id>` |
+There is a `render.yaml` in here so it should pick most of that up on its own.
 
-Any other address gives back the React app, because React Router deals with pages like
-`/records` and `/s/K7P2QX9M` inside the browser.
+One catch on the free plan: the disk gets wiped whenever the app redeploys or goes to sleep, so
+old records disappear. Fine for showing it off, not fine for real use. To fix it properly you
+add a Render disk on a paid plan and set `DB_PATH=/data/attendance.db`, which is why that
+setting exists.
 
-## Deploying it (Render, free)
+The camera scanner page only works on https, but Render gives you that for free. Scanning with
+a phone camera works either way since it is only opening a link.
 
-1. Push this folder to a GitHub repository.
-2. Make an account at https://render.com and click **New > Web Service**.
-3. Pick your repository. Render reads `render.yaml`, but if it asks, the settings are:
-   - Build command: `npm install && npm run build`
-   - Start command: `npm start`
-4. Add these environment variables under **Environment**:
+## Stuff I would do next
 
-   | Name | Value |
-   | --- | --- |
-   | `ADMIN_PASSWORD` | a password of your own, not `admin123` |
-   | `SESSION_SECRET` | any long random string |
-
-5. Deploy. Render gives you a link like `https://qr-attendance.onrender.com`.
-
-The build step is what turns the React code into plain files in `client/dist`, which Express
-then serves. If you forget it, the site shows a message telling you to run the build.
-
-The camera scanner at `/scan` only works over https, which Render gives you for free. Phone
-cameras scanning the QR code work either way, because they just open a link.
-
-**One thing to know about the free plan:** the disk is wiped every time the app redeploys or
-goes to sleep, so old attendance records will disappear. That is fine for a demo. To keep
-records for real, add a Render **Disk** mounted at `/data` on a paid plan and set the
-environment variable `DB_PATH=/data/attendance.db`, which is what that variable is for.
-
-## Things I know are not perfect
-
-I kept this to the core features on purpose, but if I kept working on it I would add:
-
-- Real student accounts instead of typing a name each time, so nobody can check in under
-  someone else's ID.
-- A QR code that changes every 30 seconds, so a student cannot screenshot it and send it to a
-  friend who is not in the room.
-- An optional location check, to confirm the phone is actually near the classroom.
-- Separate logins per teacher instead of one shared password.
-- Automated tests. Right now I test by clicking through the app.
+- Real student logins, because right now you type whatever name you like. That is the biggest
+  hole in it.
+- A QR code that changes every 30 seconds, so nobody can screenshot it and send it to a mate
+  outside.
+- Maybe a location check to confirm the phone is near the classroom, though I am not sure how
+  annoying that gets in practice.
+- Proper tests. At the moment I test it by clicking through everything myself, which works but
+  I know that is not the answer.
