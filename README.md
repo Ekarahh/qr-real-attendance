@@ -120,13 +120,3 @@ setting exists.
 The camera scanner page only works on https, but Render gives you that for free. Scanning with
 a phone camera works either way since it is only opening a link.
 
-## Stuff I would do next
-
-- Real student logins, because right now you type whatever name you like. That is the biggest
-  hole in it.
-- A QR code that changes every 30 seconds, so nobody can screenshot it and send it to a mate
-  outside.
-- Maybe a location check to confirm the phone is near the classroom, though I am not sure how
-  annoying that gets in practice.
-- Proper tests. At the moment I test it by clicking through everything myself, which works but
-  I know that is not the answer.
