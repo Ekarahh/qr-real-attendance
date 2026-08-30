@@ -10,7 +10,7 @@
     "dev:client": "npm run dev --prefix client"
   },
   "engines": {
-    "node": ">=20.19"
+    "node": "22.x"
   },
   "dependencies": {
     "better-sqlite3": "^11.5.0",
